@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🧯 Fire Extinguisher QA Quiz - รพ.สต.สะกาด</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Chart.js for dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: "Noto Sans Thai", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    .card { @apply bg-white rounded-2xl shadow-xl p-5; }
+    .badge { @apply rounded-full px-3 py-1 text-sm font-semibold; }
+    .tab-active { @apply bg-red-500 text-white; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50">
+  <div id="app" class="max-w-6xl mx-auto p-4 md:p-8">
+    <header class="flex items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg">
+          <span class="text-2xl">🧯</span>
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-red-600">ระบบตรวจสอบคุณภาพถังดับเพลิง</h1>
+          <p class="text-sm md:text-base text-slate-600">รพ.สต.สะกาด • Fire Extinguisher QA Quiz</p>
+        </div>
+      </div>
+      <div id="userBox" class="hidden md:flex items-center gap-3">
+        <span id="userRole" class="badge bg-amber-100 text-amber-700">-</span>
+        <span id="userName" class="font-semibold text-slate-700">-</span>
+        <button id="btnLogout" class="ml-2 px-3 py-2 rounded-xl bg-slate-800 text-white hover:bg-slate-900">ออกจากระบบ</button>
+      </div>
+    </header>
+
+    <!-- LOGIN -->
+    <section id="loginSection" class="card max-w-md mx-auto">
+      <h2 class="text-xl font-bold text-slate-800 mb-4">เข้าสู่ระบบ</h2>
+      <p class="text-slate-600 mb-3">บัญชีเริ่มต้น (เปลี่ยนได้ภายหลัง):</p>
+      <ul class="text-sm text-slate-600 mb-4 list-disc pl-6">
+        <li><b>ผู้ดูแล (admin)</b> • ชื่อผู้ใช้: <code>admin</code> รหัส: <code>admin123</code></li>
+        <li><b>ผู้ตรวจสอบ (inspector)</b> • ชื่อผู้ใช้: <code>inspector</code> รหัส: <code>1234</code></li>
+      </ul>
+      <div class="grid gap-3">
+        <input id="loginUser" class="border rounded-xl px-4 py-3" placeholder="ชื่อผู้ใช้" />
+        <input id="loginPass" type="password" class="border rounded-xl px-4 py-3" placeholder="รหัสผ่าน" />
+        <button id="btnLogin" class="w-full py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600">เข้าสู่ระบบ</button>
+      </div>
+    </section>
+
+    <!-- MAIN APP -->
+    <section id="mainSection" class="hidden">
+      <!-- TABS -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button data-tab="quiz" class="tabBtn px-4 py-2 rounded-xl bg-white shadow hover:bg-rose-50">แบบตรวจ</button>
+        <button data-tab="dashboard" class="tabBtn px-4 py-2 rounded-xl bg-white shadow hover:bg-rose-50">สถิติ</button>
+        <button data-tab="records" class="tabBtn px-4 py-2 rounded-xl bg-white shadow hover:bg-rose-50">บันทึก/ส่งออก</button>
+        <button data-tab="manage" class="tabBtn px-4 py-2 rounded-xl bg-white shadow hover:bg-rose-50">จัดการ</button>
+      </div>
+
+      <!-- QUIZ TAB -->
+      <div id="tab-quiz" class="card">
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label class="text-sm text-slate-600">หมายเลขถัง / รหัสอุปกรณ์</label>
+            <input id="fxId" class="border rounded-xl px-4 py-2 w-full" placeholder="เช่น SKD-01-001" />
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">จุดติดตั้ง / พื้นที่</label>
+            <input id="fxLocation" class="border rounded-xl px-4 py-2 w-full" placeholder="เช่น หน้าห้องฉุกเฉิน" />
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">ประเภทถัง</label>
+            <select id="fxType" class="border rounded-xl px-4 py-2 w-full">
+              <option>ผงเคมีแห้ง (Dry Chemical)</option>
+              <option>CO₂</option>
+              <option>Foam</option>
+              <option>Water</option>
+              <option>อื่น ๆ</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="questionsBox" class="space-y-4"></div>
+
+        <button id="btnSave" class="mt-6 w-full md:w-auto px-6 py-3 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600">✅ บันทึกผลการตรวจ</button>
+        <p id="saveMsg" class="mt-3 text-green-700 font-medium hidden">✔️ บันทึกสำเร็จ</p>
+      </div>
+
+      <!-- DASHBOARD TAB -->
+      <div id="tab-dashboard" class="card hidden">
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+          <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+            <p class="text-slate-600">อัตราผ่าน</p>
+            <p id="kpiPassRate" class="text-3xl font-extrabold text-emerald-700">-</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200">
+            <p class="text-slate-600">อัตราไม่ผ่าน</p>
+            <p id="kpiFailRate" class="text-3xl font-extrabold text-rose-700">-</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200">
+            <p class="text-slate-600">จำนวนการตรวจ</p>
+            <p id="kpiTotal" class="text-3xl font-extrabold text-amber-700">-</p>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <h3 class="font-bold mb-2">สัดส่วนผลตรวจ</h3>
+            <canvas id="chartPie"></canvas>
+          </div>
+          <div>
+            <h3 class="font-bold mb-2">ข้อบกพร่องที่พบมากที่สุด</h3>
+            <canvas id="chartBar"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECORDS TAB -->
+      <div id="tab-records" class="card hidden">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h3 class="text-xl font-bold">บันทึกการตรวจ</h3>
+          <div class="flex gap-2">
+            <button id="btnExportXLSX" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">ส่งออก Excel</button>
+            <button id="btnClear" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-800 hover:bg-slate-300">ล้างข้อมูลทั้งหมด</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700">
+                <th class="p-2 text-left">วันที่</th>
+                <th class="p-2 text-left">ผู้ตรวจ</th>
+                <th class="p-2 text-left">รหัสถัง</th>
+                <th class="p-2 text-left">จุดติดตั้ง</th>
+                <th class="p-2 text-left">ประเภท</th>
+                <th class="p-2 text-left">สรุป</th>
+                <th class="p-2 text-left">รายการไม่ผ่าน (ย่อ)</th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MANAGE TAB -->
+      <div id="tab-manage" class="card hidden">
+        <h3 class="text-xl font-bold mb-3">จัดการระบบ</h3>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="p-4 rounded-2xl border">
+            <h4 class="font-semibold mb-2">ผู้ใช้งาน</h4>
+            <p class="text-sm text-slate-600 mb-2">เพิ่ม/แก้ไขผู้ใช้</p>
+            <div class="grid grid-cols-2 gap-3">
+              <input id="newUser" class="border rounded-xl px-3 py-2" placeholder="ชื่อผู้ใช้" />
+              <input id="newPass" class="border rounded-xl px-3 py-2" placeholder="รหัสผ่าน" />
+              <select id="newRole" class="border rounded-xl px-3 py-2">
+                <option value="inspector">inspector</option>
+                <option value="admin">admin</option>
+              </select>
+              <button id="btnAddUser" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">บันทึกผู้ใช้</button>
+            </div>
+            <div class="mt-4">
+              <h5 class="font-semibold mb-1">รายการผู้ใช้</h5>
+              <ul id="userList" class="space-y-1 text-sm"></ul>
+            </div>
+          </div>
+          <div class="p-4 rounded-2xl border">
+            <h4 class="font-semibold mb-2">สำรองข้อมูล</h4>
+            <div class="flex flex-wrap gap-2">
+              <button id="btnBackupJson" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">ดาวน์โหลด JSON</button>
+              <input id="restoreFile" type="file" accept=".json" class="hidden" />
+              <button id="btnRestoreJson" class="px-4 py-2 rounded-xl bg-amber-500 text-white hover:bg-amber-600">กู้คืนจากไฟล์ JSON</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">เหมาะสำหรับย้ายข้อมูลระหว่างเครื่อง</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ------------------ DATA & CONSTANTS ------------------
+    const QUESTIONS = [
+      "อยู่ในตำแหน่งที่กำหนด ไม่ถูกย้าย/ไม่สูญหาย",
+      "เข้าถึงได้ง่าย ทางเดินไม่กีดขวาง ระยะมองเห็นชัดเจน",
+      "ป้ายบอกตำแหน่ง/สติ๊กเกอร์ชนิดถังอยู่ครบและมองเห็นชัด",
+      "ซีล/ลวดล็อก & สลักนิรภัย (Safety Pin) อยู่ครบ ไม่ชำรุด ไม่ถูกดึงออก",
+      "เกจความดัน (ถังที่มีเกจ) ชี้ในโซนสีเขียว",
+      "น้ำหนัก/ตัวชี้สถานะ (สำหรับถัง CO₂ หรือถังไม่มีเกจ) อยู่ในเกณฑ์/เครื่องชี้ “พร้อมใช้งาน”",
+      "สายฉีด/หัวฉีด/เข็มขัดยึด อยู่ครบ ไม่อุดตัน ไม่แตกร้าว",
+      "สภาพตัวถัง ไม่มีรอยบุบ ลักยิ้ม สนิม กร่อน รอยร้าว หรือรอยรั่ว",
+      "ตัวยึด/ขายึด/ตู้เก็บ แข็งแรง แน่นหนา ประตูตู้เปิดได้ง่าย",
+      "ฉลากวิธีใช้ & ข้อควรระวัง อ่านได้ชัด ไม่ซีดจาง/หลุดลอก",
+      "ไม่มีร่องรอยการใช้งานบางส่วน ไม่มีผงหลุด/หัวฉีดเปื้อน/ตะกอน",
+      "ความสะอาดโดยรอบ ปราศจากสิ่งสกปรก/น้ำมัน/สารกัดกร่อน",
+      "แท็กบันทึกการตรวจ มีและอัปเดตทุกครั้งหลังตรวจ"
+    ];
+
+    const LS_USERS = "feq_users";
+    const LS_RECORDS = "feq_records";
+    const LS_SESSION = "feq_session";
+
+    function loadUsers() {
+      const json = localStorage.getItem(LS_USERS);
+      if (json) return JSON.parse(json);
+      const defaults = [
+        { username: "admin", password: "admin123", role: "admin" },
+        { username: "inspector", password: "1234", role: "inspector" },
+      ];
+      localStorage.setItem(LS_USERS, JSON.stringify(defaults));
+      return defaults;
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(LS_USERS, JSON.stringify(users));
+    }
+
+    function getSession() {
+      const s = localStorage.getItem(LS_SESSION);
+      return s ? JSON.parse(s) : null;
+    }
+
+    function setSession(sess) {
+      localStorage.setItem(LS_SESSION, JSON.stringify(sess));
+    }
+
+    function signOut() {
+      localStorage.removeItem(LS_SESSION);
+      location.reload();
+    }
+
+    function loadRecords() {
+      const json = localStorage.getItem(LS_RECORDS);
+      return json ? JSON.parse(json) : [];
+    }
+
+    function saveRecord(record) {
+      const all = loadRecords();
+      all.push(record);
+      localStorage.setItem(LS_RECORDS, JSON.stringify(all));
+    }
+
+    // ------------------ UI HELPERS ------------------
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    function switchTab(name) {
+      $$(".tabBtn").forEach(b => b.classList.remove("tab-active"));
+      $$("[id^='tab-']").forEach(v => v.classList.add("hidden"));
+      document.querySelector(`[data-tab='${name}']`).classList.add("tab-active");
+      $(`#tab-${name}`).classList.remove("hidden");
+      if (name === "dashboard") drawDashboard();
+      if (name === "records") renderRecords();
+      if (name === "manage") renderUsers();
+    }
+
+    // ------------------ LOGIN ------------------
+    function doLogin() {
+      const u = $("#loginUser").value.trim();
+      const p = $("#loginPass").value.trim();
+      const users = loadUsers();
+      const found = users.find(x => x.username === u && x.password === p);
+      if (!found) {
+        alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        return;
+      }
+      const session = { username: found.username, role: found.role, loginAt: new Date().toISOString() };
+      setSession(session);
+      afterLogin(session);
+    }
+
+    function afterLogin(sess) {
+      $("#loginSection").classList.add("hidden");
+      $("#mainSection").classList.remove("hidden");
+      $("#userBox").classList.remove("hidden");
+      $("#userName").textContent = sess.username;
+      $("#userRole").textContent = sess.role;
+      switchTab("quiz");
+    }
+
+    // ------------------ QUIZ RENDER ------------------
+    function renderQuestions() {
+      const box = $("#questionsBox");
+      box.innerHTML = "";
+      QUESTIONS.forEach((q, i) => {
+        const idPass = `q${i}_pass`;
+        const idFail = `q${i}_fail`;
+        const idNote = `q${i}_note`;
+        const wrap = document.createElement("div");
+        wrap.className = "p-4 rounded-2xl border bg-white/70";
+        wrap.innerHTML = `
+          <p class="font-medium text-slate-800">${i + 1}. ${q}</p>
+          <div class="flex flex-wrap gap-6 mt-2">
+            <label class="flex items-center gap-2 text-green-700">
+              <input id="${idPass}" type="radio" name="q${i}" class="accent-green-600" />
+              ☑ ผ่าน
+            </label>
+            <label class="flex items-center gap-2 text-rose-700">
+              <input id="${idFail}" type="radio" name="q${i}" class="accent-rose-600" />
+              ☐ ไม่ผ่าน
+            </label>
+          </div>
+          <textarea id="${idNote}" class="w-full mt-3 p-3 border rounded-xl hidden" placeholder="หมายเหตุ / รายการแก้ไข (กรอกเมื่อเลือก 'ไม่ผ่าน')"></textarea>
+        `;
+        box.appendChild(wrap);
+        const passEl = wrap.querySelector(`#${idPass}`);
+        const failEl = wrap.querySelector(`#${idFail}`);
+        const noteEl = wrap.querySelector(`#${idNote}`);
+        passEl.addEventListener("change", () => { if (passEl.checked) noteEl.classList.add("hidden"); });
+        failEl.addEventListener("change", () => { if (failEl.checked) noteEl.classList.remove("hidden"); noteEl.focus(); });
+      });
+    }
+
+    function collectAnswers() {
+      const answers = [];
+      const notes = [];
+      for (let i = 0; i < QUESTIONS.length; i++) {
+        const pass = document.querySelector(`#q${i}_pass`).checked;
+        const fail = document.querySelector(`#q${i}_fail`).checked;
+        let ans = null;
+        if (pass) ans = "ผ่าน";
+        else if (fail) ans = "ไม่ผ่าน";
+        const note = document.querySelector(`#q${i}_note`).value.trim();
+        if (ans === "ไม่ผ่าน" && !note) {
+          alert(`กรุณาระบุหมายเหตุของข้อที่ ${i + 1}`);
+          return null;
+        }
+        answers.push(ans);
+        notes.push(note);
+      }
+      if (answers.some(a => a === null)) {
+        alert("กรุณาตอบทุกข้อให้ครบ");
+        return null;
+      }
+      return { answers, notes };
+    }
+
+    function handleSave() {
+      const sess = getSession();
+      if (!sess) return alert("กรุณาเข้าสู่ระบบ");
+      const info = collectAnswers();
+      if (!info) return;
+      const fxId = $("#fxId").value.trim();
+      const fxLocation = $("#fxLocation").value.trim();
+      const fxType = $("#fxType").value;
+      const passCount = info.answers.filter(a => a === "ผ่าน").length;
+      const failCount = info.answers.filter(a => a === "ไม่ผ่าน").length;
+      const summary = failCount === 0 ? "ผ่านทั้งหมด" : `ไม่ผ่าน ${failCount} ข้อ`;
+
+      const rec = {
+        id: crypto.randomUUID(),
+        date: new Date().toISOString(),
+        inspector: sess.username,
+        fxId, fxLocation, fxType,
+        answers: info.answers,
+        notes: info.notes,
+        passCount, failCount, summary
+      };
+      saveRecord(rec);
+      $("#saveMsg").classList.remove("hidden");
+      setTimeout(() => $("#saveMsg").classList.add("hidden"), 2500);
+      // reset form
+      renderQuestions();
+      $("#fxId").value = "";
+      $("#fxLocation").value = "";
+      $("#fxType").selectedIndex = 0;
+      updateKPIs();
+    }
+
+    // ------------------ RECORDS RENDER ------------------
+    function renderRecords() {
+      const body = $("#recordsBody");
+      const list = loadRecords().slice().reverse();
+      body.innerHTML = "";
+      list.forEach(r => {
+        const fails = r.answers
+          .map((a, i) => a === "ไม่ผ่าน" ? `${i + 1}` : null)
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(", ");
+        const tr = document.createElement("tr");
+        tr.className = "border-t hover:bg-amber-50";
+        tr.innerHTML = `
+          <td class="p-2">${new Date(r.date).toLocaleString()}</td>
+          <td class="p-2">${r.inspector}</td>
+          <td class="p-2">${r.fxId || "-"}</td>
+          <td class="p-2">${r.fxLocation || "-"}</td>
+          <td class="p-2">${r.fxType || "-"}</td>
+          <td class="p-2">${r.summary}</td>
+          <td class="p-2">${fails || "-"}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    // ------------------ EXPORT EXCEL ------------------
+    function exportXLSX() {
+      const rows = loadRecords();
+      const data = rows.map(r => {
+        const obj = {
+          "วันที่": new Date(r.date).toLocaleString(),
+          "ผู้ตรวจ": r.inspector,
+          "รหัสถัง": r.fxId,
+          "จุดติดตั้ง": r.fxLocation,
+          "ประเภท": r.fxType,
+          "สรุป": r.summary,
+          "ผ่าน": r.passCount,
+          "ไม่ผ่าน": r.failCount,
+        };
+        QUESTIONS.forEach((q, i) => {
+          obj[`Q${i+1} ${q}`] = r.answers[i] || "";
+          if (r.answers[i] === "ไม่ผ่าน") obj[`หมายเหตุ Q${i+1}`] = r.notes[i] || "";
+        });
+        return obj;
+      });
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "FE_Inspections");
+      XLSX.writeFile(wb, `FE_Inspections_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // ------------------ DASHBOARD ------------------
+    let pieChart, barChart;
+    function updateKPIs() {
+      const list = loadRecords();
+      const total = list.length;
+      $("#kpiTotal").textContent = total;
+      let passInspections = 0, failInspections = 0;
+      list.forEach(r => {
+        if (r.failCount === 0) passInspections++; else failInspections++;
+      });
+      const passRate = total ? Math.round((passInspections/total)*100) : 0;
+      const failRate = total ? 100 - passRate : 0;
+      $("#kpiPassRate").textContent = passRate + "%";
+      $("#kpiFailRate").textContent = failRate + "%";
+    }
+
+    function drawDashboard() {
+      updateKPIs();
+      const list = loadRecords();
+      const total = list.length;
+
+      // Pie: pass vs fail (by inspection outcome)
+      const passInspections = list.filter(r => r.failCount === 0).length;
+      const failInspections = total - passInspections;
+      const pieData = [passInspections, failInspections];
+
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(document.getElementById("chartPie"), {
+        type: "pie",
+        data: {
+          labels: ["ผ่านทั้งหมด", "มีข้อไม่ผ่าน"],
+          datasets: [{ data: pieData }]
+        }
+      });
+
+      // Bar: most failed questions
+      const failCounts = new Array(QUESTIONS.length).fill(0);
+      list.forEach(r => r.answers.forEach((a, i) => { if (a === "ไม่ผ่าน") failCounts[i]++; }));
+      if (barChart) barChart.destroy();
+      barChart = new Chart(document.getElementById("chartBar"), {
+        type: "bar",
+        data: {
+          labels: QUESTIONS.map((_, i) => `Q${i+1}`),
+          datasets: [{ label: "ครั้งที่ไม่ผ่าน", data: failCounts }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // ------------------ MANAGE USERS ------------------
+    function renderUsers() {
+      const ul = $("#userList");
+      const users = loadUsers();
+      ul.innerHTML = "";
+      users.forEach((u, idx) => {
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-slate-50";
+        li.innerHTML = `
+          <div>
+            <span class="font-medium">${u.username}</span>
+            <span class="ml-2 text-xs badge bg-slate-100 text-slate-700">${u.role}</span>
+          </div>
+          <div class="flex gap-2">
+            <button class="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800" data-act="reset" data-idx="${idx}">รีเซ็ตรหัส</button>
+            <button class="px-2 py-1 text-xs rounded bg-rose-100 text-rose-800" data-act="del" data-idx="${idx}">ลบ</button>
+          </div>
+        `;
+        ul.appendChild(li);
+      });
+      ul.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = +btn.dataset.idx;
+          const users = loadUsers();
+          if (btn.dataset.act === "del") {
+            if (!confirm(`ต้องการลบผู้ใช้ ${users[idx].username}?`)) return;
+            users.splice(idx,1);
+            saveUsers(users);
+            renderUsers();
+          } else if (btn.dataset.act === "reset") {
+            const np = prompt("กำหนดรหัสผ่านใหม่");
+            if (!np) return;
+            users[idx].password = np;
+            saveUsers(users);
+            alert("อัปเดตรหัสผ่านแล้ว");
+          }
+        });
+      });
+    }
+
+    // ------------------ BACKUP/RESTORE ------------------
+    function download(filename, text) {
+      const element = document.createElement('a');
+      element.setAttribute('href', 'data:text/json;charset=utf-8,' + encodeURIComponent(text));
+      element.setAttribute('download', filename);
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }
+
+    function backupJSON() {
+      const data = {
+        users: loadUsers(),
+        records: loadRecords(),
+      };
+      download(`FEQ_backup_${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(data, null, 2));
+    }
+
+    function restoreJSON(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.users) localStorage.setItem(LS_USERS, JSON.stringify(data.users));
+          if (data.records) localStorage.setItem(LS_RECORDS, JSON.stringify(data.records));
+          alert("กู้คืนข้อมูลสำเร็จ");
+          location.reload();
+        } catch (err) {
+          alert("ไฟล์ไม่ถูกต้อง");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ------------------ INIT ------------------
+    document.addEventListener("DOMContentLoaded", () => {
+      // Render questions
+      renderQuestions();
+
+      // Tab buttons
+      $$(".tabBtn").forEach(btn => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+
+      // Login
+      $("#btnLogin").addEventListener("click", doLogin);
+      $("#btnLogout").addEventListener("click", signOut);
+
+      // Save record
+      $("#btnSave").addEventListener("click", handleSave);
+
+      // Records actions
+      $("#btnExportXLSX").addEventListener("click", exportXLSX);
+      $("#btnClear").addEventListener("click", () => {
+        if (confirm("ยืนยันล้างข้อมูลทั้งหมด?")) {
+          localStorage.removeItem(LS_RECORDS);
+          renderRecords();
+          updateKPIs();
+        }
+      });
+
+      // Manage users
+      $("#btnAddUser").addEventListener("click", () => {
+        const u = $("#newUser").value.trim();
+        const p = $("#newPass").value.trim();
+        const r = $("#newRole").value;
+        if (!u || !p) return alert("กรอกชื่อผู้ใช้และรหัสผ่าน");
+        const users = loadUsers();
+        if (users.some(x => x.username === u)) return alert("มีชื่อผู้ใช้นี้แล้ว");
+        users.push({ username: u, password: p, role: r });
+        saveUsers(users);
+        $("#newUser").value = ""; $("#newPass").value = ""; $("#newRole").value = "inspector";
+        renderUsers();
+      });
+
+      $("#btnBackupJson").addEventListener("click", backupJSON);
+      $("#btnRestoreJson").addEventListener("click", () => $("#restoreFile").click());
+      $("#restoreFile").addEventListener("change", (e) => {
+        const f = e.target.files[0]; if (f) restoreJSON(f);
+      });
+
+      // Auto session
+      const sess = getSession();
+      if (sess) afterLogin(sess);
+    });
+  </script>
+</body>
+</html>
